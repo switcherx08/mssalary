@@ -1,4 +1,3 @@
-host = 'localhost'
-user =  'root'
-password = 'root'
-db_name = 'mssalary_db'
+class Config:
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///app.db'
+    SQLALCHEMY_ECHO = True
