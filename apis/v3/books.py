@@ -1,80 +1,127 @@
+from datetime import datetime
+
 from flask_restx import Resource, Namespace, reqparse, fields
-from models import Book as MBook, db
+
+from apis.parsers import list_parser
+from apis.v3 import resp_model, book_model
+from models import Book as MBook, db, Genre as MGenre, UserBookState as MUserBookState
 
 ns = Namespace('books')
-books = {}
+books = []
 counter = 1
 
-book_model = ns.model('Book', {
-    'id': fields.Integer,
-    'title': fields.String,
-    'description': fields.String,
-    'message': fields.String
+book_response = ns.inherit('BookResponse', resp_model, {
+    'book': fields.Nested(book_model, skip_none=True),
+})
+
+book_list_response = ns.inherit('BookListResponse', resp_model, {
+    'books': fields.List(fields.Nested(book_model)),
+    'page_count': fields.Integer
 })
 
 parser = reqparse.RequestParser()
 parser.add_argument('title', required=True, type=str)
 parser.add_argument('description', required=False, type=str)
+parser.add_argument('publisher_id', required=True, type=int)
+parser.add_argument('price', required=True, type=int)
+parser.add_argument('published_at', required=False)
+parser.add_argument('genres', required=False, action='append', type=int, default=[])
 
 get_parser = reqparse.RequestParser()
 get_parser.add_argument('title', required=False, type=str, location='args')
+get_parser.add_argument('page', required=False, type=int, location='args', default=1)
+get_parser.add_argument('by', required=False, type=str, location='args')
+get_parser.add_argument('order', required=False, type=str, location='args')
+get_parser.add_argument('limit', required=False, type=int, location='args', default=5)
+get_parser.add_argument('publisher_id', required=False, type=int, location='args')
+get_parser.add_argument('genres', required=False, type=list_parser(), default=[], location='args')
+get_parser.add_argument('user_id', required=False, type=int, location='args')
+
+like_parser = reqparse.RequestParser()
+like_parser.add_argument('liked', required=True, type=bool)
+like_parser.add_argument('user_id', required=True, type=int)
+
+temp_parser = reqparse.RequestParser()
+temp_parser.add_argument('user_id', required=False, type=int, location='args')
 
 
 @ns.route('/<int:id>')
 class Book(Resource):
-    @ns.marshal_with(book_model, skip_none=True)
+    @ns.marshal_with(book_response, skip_none=True)
     def get(self, id):
-        book = MBook.query.get(id)
+        args = temp_parser.parse_args()
+        book = MBook.find(id, user_id=args.user_id)
         if book is None:
-            return {'message': 'not found'}, 404
-        return book
+            return {'msg': 'not found'}, 404
 
-    # Реализовать метод PUT / api / v3 / books / < int: id >
-    @ns.marshal_with(book_model)
+        return {'book': book}
+
+    @ns.marshal_with(book_response)
     def put(self, id):
         args = parser.parse_args()
         book = MBook.query.get(id)
         if book is None:
-            query = MBook(id=id, title=args.title, description=args.description)
-            db.session.add(query)
-            db.session.commit()
-            #return book  --- вот так почему-то отдает запись до обновления , поэтому:
-            newbook = MBook.query.get(id)
-            return newbook
+            return {'msg': 'not found'}, 404
+
         book.title = args.title
         book.description = args.description
+        book.genres = MGenre.find_in(args.genres)
         db.session.commit()
-        return book
+        return {'book': book}
 
-    # Реализовать метод DELETE /api/v3/books/<int:id>
-    @ns.marshal_with(book_model)
+    @ns.marshal_with(book_response, skip_none=True)
     def delete(self, id):
         book = MBook.query.get(id)
         if book is None:
-            return {'message': 'could not delete, this book is not exist'}, 404
+            return {'msg': f'could not delete, this book (id {id}) doesn\'t exist'}, 404
         print(book)
         db.session.delete(book)
         db.session.commit()
-        return {'message': 'book has been deleted successfully'}
-
-
-# Добавить фильтр формата GET /api/v1/books/?title=<title> с помощью (подсказка: нужно использовать RequestParser())
+        return {'book': book}
 
 
 @ns.route('/')
 class BookList(Resource):
-    @ns.marshal_list_with(book_model)
+    @ns.marshal_list_with(book_list_response)
     def get(self):
         args = get_parser.parse_args()
-        books = MBook.query.all()
-        return books
+        books = MBook.find_all(**args)
+        page_count = MBook.count_pages(**args)
 
-    @ns.marshal_with(book_model)
+        return {'books': books, 'page_count': page_count}
+
+    @ns.marshal_with(book_response)
     def post(self):
         args = parser.parse_args()
+        args.genres = MGenre.find_in(args.genres)
         book = MBook(**args)  # MBook(title=args.title, description=args.description)
+        book.published_at = datetime.now()  # .strftime('%Y-%m-%d-%H.%M.%S')
         db.session.add(book)
         db.session.commit()
-        print(args)
-        print(book)
-        return book
+        return {'book': book}
+
+
+@ns.route('/<int:id>/like/')
+class BookLikes(Resource):
+    @ns.marshal_with(book_response)
+    def post(self, id):
+        args = like_parser.parse_args()
+        book = MBook.find(id, args.user_id)
+        if book is None:
+            return {'msg': 'book not found'}, 404
+
+        new_state_created = book.user_state is None
+
+        if new_state_created:
+            book.user_state = MUserBookState(user_id=args.user_id, book_id=id)
+
+        if book.user_state.liked != args.liked:
+            book.like_count = MBook.like_count + (1 if args.liked else -1)
+            book.user_state.liked = args.liked
+
+            db.session.flush()
+            db.session.commit()
+
+            book.user_state.liked = args.liked #ПОСМОТРЕТЬ
+
+        return {'book': book}
