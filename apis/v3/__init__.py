@@ -34,10 +34,26 @@ book_model = api.model('Book', {
     'user_state': fields.Nested(user_state_model, skip_none=True)
 })
 
+user_model = api.model('User',{
+    'id': fields.Integer,
+    'email': fields.String,
+    'name': fields.String,
+    'role': fields.Integer
+})
+
+user_response = api.inherit('UserResponse', resp_model, {
+    'user': fields.Nested(user_model)
+})
+
+
 from .books import ns as books_ns
 from .publisher import ns as publisher_ns
 from .genres import ns as genre_ns
+from .users import ns as user_ns
+from .auth import ns as auth_ns
 
 api.add_namespace(books_ns, path='/books')
 api.add_namespace(publisher_ns, path='/publishers')
 api.add_namespace(genre_ns, path='/genres')
+api.add_namespace(user_ns, path='/users')
+api.add_namespace(auth_ns, path='/auth')

@@ -6,6 +6,6 @@ from .v3 import bp as api_v3
 
 bp = Blueprint('api', __name__) #объект блюпринта
 bp.register_blueprint(api_v1, url_prefix='/v1') #регистрация пути к 1 версии
-bp.register_blueprint(api_v2, url_prefix='/v2') #регистрация пути к 2 верси
+bp.register_blueprint(api_v2, url_prefix='/v2') #регистрация пути к 2 версии
 bp.register_blueprint(api_v3, url_prefix='/v3')
 

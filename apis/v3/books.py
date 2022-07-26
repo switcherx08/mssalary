@@ -7,8 +7,6 @@ from apis.v3 import resp_model, book_model
 from models import Book as MBook, db, Genre as MGenre, UserBookState as MUserBookState
 
 ns = Namespace('books')
-books = []
-counter = 1
 
 book_response = ns.inherit('BookResponse', resp_model, {
     'book': fields.Nested(book_model, skip_none=True),
@@ -110,18 +108,15 @@ class BookLikes(Resource):
         if book is None:
             return {'msg': 'book not found'}, 404
 
-        new_state_created = book.user_state is None
-
-        if new_state_created:
-            book.user_state = MUserBookState(user_id=args.user_id, book_id=id)
+        if book.user_state is None:
+            book.user_state = MUserBookState(liked=False, user_id=args.user_id, book_id=id)
 
         if book.user_state.liked != args.liked:
             book.like_count = MBook.like_count + (1 if args.liked else -1)
             book.user_state.liked = args.liked
 
-            db.session.flush()
             db.session.commit()
 
-            book.user_state.liked = args.liked #ПОСМОТРЕТЬ
-
         return {'book': book}
+
+
