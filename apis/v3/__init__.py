@@ -45,6 +45,10 @@ user_response = api.inherit('UserResponse', resp_model, {
     'user': fields.Nested(user_model, skip_none=True)
 })
 
+login_response = api.inherit('LoginResponse', resp_model, {
+    'access_token': fields.String
+})
+
 
 from .books import ns as books_ns
 from .publisher import ns as publisher_ns
