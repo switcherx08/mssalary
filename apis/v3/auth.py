@@ -33,7 +33,7 @@ class Signup(Resource):
 
 @ns.route('/login')
 class Login(Resource):
-    @marshal_with(user_response, skip_none=True)
+    @marshal_with(login_response, skip_none=True)
     def post(self):
         args = login_parser.parse_args()
         if MUser.check_log_pass(args.email, args.password):
