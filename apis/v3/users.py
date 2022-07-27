@@ -23,5 +23,6 @@ class User(Resource):
         args = user_get_parser.parse_args()
         user = MUser.query.get(id)
         return {'user': user}
-
+    def post(self):
+        pass
 

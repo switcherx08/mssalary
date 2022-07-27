@@ -42,7 +42,7 @@ user_model = api.model('User',{
 })
 
 user_response = api.inherit('UserResponse', resp_model, {
-    'user': fields.Nested(user_model)
+    'user': fields.Nested(user_model, skip_none=True)
 })
 
 
