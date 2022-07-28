@@ -1,11 +1,10 @@
 from datetime import datetime
 
-from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from flask_restx import Resource, Namespace, reqparse, fields
 
 from apis.parsers import list_parser
 from apis.v3 import resp_model, book_model
-from models import Book as MBook, db, Genre as MGenre, UserBookState as MUserBookState, User as MUser
+from models import Book as MBook, db, Genre as MGenre, UserBookState as MUserBookState
 
 ns = Namespace('books')
 
@@ -38,7 +37,7 @@ get_parser.add_argument('user_id', required=False, type=int, location='args')
 
 like_parser = reqparse.RequestParser()
 like_parser.add_argument('liked', required=True, type=bool)
-#like_parser.add_argument('user_id', required=True, type=int)
+like_parser.add_argument('user_id', required=True, type=int)
 
 temp_parser = reqparse.RequestParser()
 temp_parser.add_argument('user_id', required=False, type=int, location='args')
@@ -61,6 +60,7 @@ class Book(Resource):
         book = MBook.query.get(id)
         if book is None:
             return {'msg': 'not found'}, 404
+
         book.title = args.title
         book.description = args.description
         book.genres = MGenre.find_in(args.genres)
@@ -88,33 +88,28 @@ class BookList(Resource):
 
         return {'books': books, 'page_count': page_count}
 
-    #Решение ПУНКТА 4 ДЗ
-    @jwt_required()
     @ns.marshal_with(book_response)
     def post(self):
         args = parser.parse_args()
         args.genres = MGenre.find_in(args.genres)
-        if MUser.check_edit_access(get_jwt_identity()):
-            book = MBook(**args)  # MBook(title=args.title, description=args.description)
-            book.published_at = datetime.now()  # .strftime('%Y-%m-%d-%H.%M.%S')
-            db.session.add(book)
-            db.session.commit()
-            return {'book': book}
-        return {'msg': 'User does not exist or has no permission'}
+        book = MBook(**args)  # MBook(title=args.title, description=args.description)
+        book.published_at = datetime.now()  # .strftime('%Y-%m-%d-%H.%M.%S')
+        db.session.add(book)
+        db.session.commit()
+        return {'book': book}
 
 #решение пункта 3 ДЗ:
 @ns.route('/<int:id>/like/')
 class BookLikes(Resource):
-    @jwt_required()
     @ns.marshal_with(book_response)
     def post(self, id):
         args = like_parser.parse_args()
-        book = MBook.find(id, get_jwt_identity())
+        book = MBook.find(id, args.user_id)
         if book is None:
             return {'msg': 'book not found'}, 404
 
         if book.user_state is None:
-            book.user_state = MUserBookState(liked=False, user_id=get_jwt_identity(), book_id=id)
+            book.user_state = MUserBookState(liked=False, user_id=args.user_id, book_id=id)
 
         if book.user_state.liked != args.liked:
             book.like_count = MBook.like_count + (1 if args.liked else -1)
