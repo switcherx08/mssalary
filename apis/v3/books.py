@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from flask_restx import Resource, Namespace, reqparse, fields
 
 from apis.parsers import list_parser
@@ -37,7 +38,7 @@ get_parser.add_argument('user_id', required=False, type=int, location='args')
 
 like_parser = reqparse.RequestParser()
 like_parser.add_argument('liked', required=True, type=bool)
-like_parser.add_argument('user_id', required=True, type=int)
+#like_parser.add_argument('user_id', required=True, type=int)
 
 temp_parser = reqparse.RequestParser()
 temp_parser.add_argument('user_id', required=False, type=int, location='args')
@@ -101,15 +102,16 @@ class BookList(Resource):
 
 @ns.route('/<int:id>/like/')
 class BookLikes(Resource):
+    @jwt_required()
     @ns.marshal_with(book_response)
     def post(self, id):
         args = like_parser.parse_args()
-        book = MBook.find(id, args.user_id)
+        book = MBook.find(id, get_jwt_identity())
         if book is None:
             return {'msg': 'book not found'}, 404
 
         if book.user_state is None:
-            book.user_state = MUserBookState(liked=False, user_id=args.user_id, book_id=id)
+            book.user_state = MUserBookState(liked=False, user_id=get_jwt_identity(), book_id=id)
 
         if book.user_state.liked != args.liked:
             book.like_count = MBook.like_count + (1 if args.liked else -1)

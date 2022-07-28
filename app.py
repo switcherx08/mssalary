@@ -6,6 +6,7 @@ from models import db
 
 app = Flask(__name__)
 app.config.from_object('config.Config')
+app.config['PROPAGATE_EXCEPTIONS'] = True #иначе выдает эксепшн, при отсутствии токена
 
 
 app.config['JWT_SECRET_KEY'] = 'jwt-secret-string'
@@ -23,7 +24,4 @@ def init_tables():
 
 
 if __name__ == '__main__':
-    app.run(use_reloader=True)
-
-# import flask_jwt_extended
-#
+    app.run(use_reloader=True, port=9000)

@@ -37,6 +37,7 @@ class Login(Resource):
     def post(self):
         args = login_parser.parse_args()
         if MUser.check_log_pass(args.email, args.password):
-            access_token = create_access_token(identity=args.email)
+            identity = MUser.query.filter_by(email=args.email).first().id
+            access_token = create_access_token(identity=identity)
             return {'msg': True, 'access_token': access_token}
         return {'msg': 'Invalid Credentials'}
