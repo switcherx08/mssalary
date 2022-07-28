@@ -37,5 +37,15 @@ class User(db.Model):
     def get_user_by_email(cls, argsemail):
         return cls.query.filter_by(email=argsemail).first()
 
+    @classmethod
+    def check_edit_access(cls, userid):
+        query = cls.query.filter_by(id=userid).first()
+        if query:
+            if query.role > 1:
+                return True
+        return False
+
+
+
 
 
