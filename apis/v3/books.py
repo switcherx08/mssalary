@@ -102,7 +102,7 @@ class BookList(Resource):
             return {'book': book}
         return {'msg': 'User does not exist or has no permission'}
 
-#решение пункта 3 ДЗ :
+#решение пункта 3 ДЗ:
 @ns.route('/<int:id>/like/')
 class BookLikes(Resource):
     @jwt_required()
