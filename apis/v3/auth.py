@@ -25,7 +25,8 @@ class Signup(Resource):
     def post(self):
         args = signup_parser.parse_args()
         if not MUser.check_uniq_email(args.email):
-            return {'msg': 'User E-Mail that you entered already exists'}
+            return {'msg': 'User E-Mail that you entered already exists'}, 409
+
         user = MUser(email=args.email, name=args.name, password_hash=MUser.get_passwd_hash(args.password))
         db.session.add(user)
         db.session.commit()
@@ -38,6 +39,7 @@ class Login(Resource):
         args = login_parser.parse_args()
         if MUser.check_log_pass(args.email, args.password):
             identity = MUser.query.filter_by(email=args.email).first().id
-            access_token = create_access_token(identity=identity)
+            access_token = create_access_token(identity=identity, additional_claims={'role': 3})
             return {'msg': True, 'access_token': access_token}
-        return {'msg': 'Invalid Credentials'}
+
+        return {'msg': 'Invalid Credentials'}, 401

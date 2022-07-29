@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request, get_jwt
 from flask_restx import Resource, Namespace, reqparse, fields
 
 from apis.parsers import list_parser
@@ -89,10 +89,12 @@ class BookList(Resource):
         return {'books': books, 'page_count': page_count}
 
     #Решение ПУНКТА 4 ДЗ
+    #@jwt_guard(roles=[2,3])
     @jwt_required()
     @ns.marshal_with(book_response)
     def post(self):
         args = parser.parse_args()
+        jwt = get_jwt()
         args.genres = MGenre.find_in(args.genres)
         if MUser.check_edit_access(get_jwt_identity()):
             book = MBook(**args)  # MBook(title=args.title, description=args.description)
@@ -100,7 +102,7 @@ class BookList(Resource):
             db.session.add(book)
             db.session.commit()
             return {'book': book}
-        return {'msg': 'User does not exist or has no permission'}
+        return {'msg': 'User does not exist or has no permission'}, 403
 
 #решение пункта 3 ДЗ :
 @ns.route('/<int:id>/like/')
