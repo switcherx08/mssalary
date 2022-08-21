@@ -5,6 +5,7 @@ from flask_restx import Resource, Namespace, reqparse, fields
 
 from apis.parsers import list_parser
 from apis.v3 import resp_model, book_model
+from apis.v3.access import Access
 from models import Book as MBook, db, Genre as MGenre, UserBookState as MUserBookState, User as MUser
 
 ns = Namespace('books')
@@ -96,7 +97,7 @@ class BookList(Resource):
         args = parser.parse_args()
         jwt = get_jwt()
         args.genres = MGenre.find_in(args.genres)
-        if MUser.check_edit_access(get_jwt_identity()):
+        if Access.check_edit_access(get_jwt_identity()):
             book = MBook(**args)  # MBook(title=args.title, description=args.description)
             book.published_at = datetime.now()  # .strftime('%Y-%m-%d-%H.%M.%S')
             db.session.add(book)

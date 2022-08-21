@@ -2,6 +2,7 @@ from flask_jwt_extended import create_access_token
 from flask_restx import Resource, Namespace, reqparse, fields, marshal_with
 import bcrypt
 
+from apis.v3.access import Access
 from models import User as MUser, db
 
 from apis.v3 import user_response, login_response
@@ -37,9 +38,11 @@ class Login(Resource):
     @marshal_with(login_response, skip_none=True)
     def post(self):
         args = login_parser.parse_args()
-        if MUser.check_log_pass(args.email, args.password):
-            identity = MUser.query.filter_by(email=args.email).first().id
-            access_token = create_access_token(identity=identity, additional_claims={'role': 3})
+        if Access.check_log_pass(args.email, args.password):
+            query = MUser.query.filter_by(email=args.email).first()
+            identity = query.id
+            role = query.role
+            access_token = create_access_token(identity=identity, additional_claims={'role': role})
             return {'msg': True, 'access_token': access_token}
 
         return {'msg': 'Invalid Credentials'}, 401
