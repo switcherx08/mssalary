@@ -25,10 +25,10 @@ class Signup(Resource):
     @marshal_with(user_response, skip_none=True)
     def post(self):
         args = signup_parser.parse_args()
-        if not MUser.check_uniq_email(args.email):
+        if not Access.check_uniq_email(args.email):
             return {'msg': 'User E-Mail that you entered already exists'}, 409
 
-        user = MUser(email=args.email, name=args.name, password_hash=MUser.get_passwd_hash(args.password))
+        user = MUser(email=args.email, name=args.name, password_hash=Access.get_passwd_hash(args.password))
         db.session.add(user)
         db.session.commit()
         return {'user': user}

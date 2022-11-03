@@ -5,7 +5,7 @@ from flask_restx import Resource, Namespace, reqparse, fields
 
 from apis.parsers import list_parser
 from apis.v3 import resp_model, book_model
-from apis.v3.access import Access
+from apis.v3.access import Access, jwt_guard, Role
 from models import Book as MBook, db, Genre as MGenre, UserBookState as MUserBookState, User as MUser
 
 ns = Namespace('books')
@@ -93,17 +93,16 @@ class BookList(Resource):
     #@jwt_guard(roles=[2,3])
     @jwt_required()
     @ns.marshal_with(book_response)
+    @jwt_guard([Role.moderator, Role.admin])
     def post(self):
         args = parser.parse_args()
-        jwt = get_jwt()
         args.genres = MGenre.find_in(args.genres)
-        if Access.check_edit_access(get_jwt_identity()):
-            book = MBook(**args)  # MBook(title=args.title, description=args.description)
-            book.published_at = datetime.now()  # .strftime('%Y-%m-%d-%H.%M.%S')
-            db.session.add(book)
-            db.session.commit()
-            return {'book': book}
-        return {'msg': 'User does not exist or has no permission'}, 403
+        book = MBook(**args)  # MBook(title=args.title, description=args.description)
+        book.published_at = datetime.now()  # .strftime('%Y-%m-%d-%H.%M.%S')
+        db.session.add(book)
+        db.session.commit()
+        return {'book': book}
+
 
 #решение пункта 3 ДЗ :
 @ns.route('/<int:id>/like/')
